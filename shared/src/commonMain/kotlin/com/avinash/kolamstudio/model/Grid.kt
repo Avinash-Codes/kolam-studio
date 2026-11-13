@@ -1,5 +1,7 @@
 package com.avinash.kolamstudio.model
 
+import kotlin.math.abs
+
 /**
  * A grid of [rows] × [cols] dots.
  *
@@ -31,6 +33,11 @@ data class Grid(
         row: Int,
         col: Int,
     ): Point = Point(2 * col + 1, 2 * row + 1)
+
+    fun midpointAt(
+        x: Float,
+        y: Float,
+    ): Point? = midpoints.firstOrNull { abs(it.x - x) + abs(it.y - y) < 1 }
 
     /**
      * Position of midpoint ([x], [y]) in [midpoints].

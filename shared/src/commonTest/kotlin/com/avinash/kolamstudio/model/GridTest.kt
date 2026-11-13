@@ -2,6 +2,7 @@ package com.avinash.kolamstudio.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class GridTest {
     @Test
@@ -15,5 +16,15 @@ class GridTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun midpointAtFindsTheMidpointUnderATap() {
+        val grid = Grid(rows = 3, cols = 4)
+        for (midpoint in grid.midpoints) {
+            assertEquals(midpoint, grid.midpointAt(midpoint.x + 0.4f, midpoint.y - 0.4f), "near $midpoint")
+        }
+        assertNull(grid.midpointAt(0.2f, 1f), "box edge")
+        assertNull(grid.midpointAt(-3f, 2f), "outside the box")
     }
 }
