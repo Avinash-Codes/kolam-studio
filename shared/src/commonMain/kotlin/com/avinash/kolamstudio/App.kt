@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.avinash.kolamstudio.generator.OFFERED_SIZES
@@ -31,14 +32,24 @@ import com.avinash.kolamstudio.generator.generate
 import com.avinash.kolamstudio.generator.offeredSymmetries
 import com.avinash.kolamstudio.model.Grid
 import com.avinash.kolamstudio.model.Pattern
+import com.avinash.kolamstudio.tracer.trace
 import com.avinash.kolamstudio.ui.KolamCanvas
 import kotlin.math.roundToInt
+
+private enum class Mode(
+    val label: String,
+) {
+    EXPLORE("Explore"),
+    EDIT("Edit"),
+}
 
 @Composable
 @Preview
 fun App() {
     MaterialTheme {
         Surface(Modifier.fillMaxSize()) {
+            var mode by remember { mutableStateOf(Mode.EXPLORE) }
+            var showGraph by remember { mutableStateOf(false) }
             var rows by remember { mutableIntStateOf(5) }
             var cols by remember { mutableIntStateOf(5) }
             var wantedSymmetry by remember { mutableStateOf(Symmetry.TWO_AXES) }
@@ -57,23 +68,46 @@ fun App() {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                pattern?.let { KolamCanvas(it, Modifier.weight(1f).fillMaxWidth()) }
-                SizeSlider("Rows", rows) { rows = it }
-                SizeSlider("Columns", cols) { cols = it }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    FilterChip(
-                        selected = symmetry == Symmetry.ONE_AXIS,
-                        onClick = { wantedSymmetry = Symmetry.ONE_AXIS },
-                        label = { Text("One mirror") },
-                    )
-                    FilterChip(
-                        selected = symmetry == Symmetry.TWO_AXES,
-                        enabled = Symmetry.TWO_AXES in symmetries,
-                        onClick = { wantedSymmetry = Symmetry.TWO_AXES },
-                        label = { Text("Two mirrors") },
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Mode.entries.forEach {
+                        FilterChip(selected = mode == it, onClick = { mode = it }, label = { Text(it.label) })
+                    }
+                    FilterChip(selected = showGraph, onClick = { showGraph = !showGraph }, label = { Text("Graph view") })
                 }
-                Button(onClick = { generation++ }) { Text("New pattern") }
+                val current = pattern ?: return@Column
+                KolamCanvas(
+                    current,
+                    Modifier.weight(1f).fillMaxWidth(),
+                    animate = mode == Mode.EXPLORE,
+                    showGraph = showGraph,
+                    onMidpointTap = if (mode == Mode.EDIT) ({ pattern = current.withNextStateAt(it) }) else null,
+                )
+                when (mode) {
+                    Mode.EXPLORE -> {
+                        SizeSlider("Rows", rows) { rows = it }
+                        SizeSlider("Columns", cols) { cols = it }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = symmetry == Symmetry.ONE_AXIS,
+                                onClick = { wantedSymmetry = Symmetry.ONE_AXIS },
+                                label = { Text("One mirror") },
+                            )
+                            FilterChip(
+                                selected = symmetry == Symmetry.TWO_AXES,
+                                enabled = Symmetry.TWO_AXES in symmetries,
+                                onClick = { wantedSymmetry = Symmetry.TWO_AXES },
+                                label = { Text("Two mirrors") },
+                            )
+                        }
+                        Button(onClick = { generation++ }) { Text("New pattern") }
+                    }
+
+                    Mode.EDIT -> {
+                        val loopCount = remember(current) { trace(current).size }
+                        Text(if (loopCount == 1) "1 loop: a valid kolam" else "$loopCount loops: a kolam needs exactly 1")
+                        Text("Tap between two dots to change how the line meets there", textAlign = TextAlign.Center)
+                    }
+                }
             }
         }
     }
