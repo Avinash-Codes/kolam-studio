@@ -3,12 +3,17 @@ package com.avinash.kolamstudio.ui
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -41,6 +46,8 @@ fun KolamCanvas(
     animate: Boolean = true,
     showGraph: Boolean = false,
     onMidpointTap: ((Point) -> Unit)? = null,
+    traceFraction: Float? = null,
+    onTrace: ((x: Float, y: Float) -> Unit)? = null,
 ) {
     val grid = pattern.grid
     val loops = remember(pattern) { trace(pattern) }
@@ -48,20 +55,33 @@ fun KolamCanvas(
     LaunchedEffect(progress) { progress.animateTo(1f, tween(DRAW_MILLIS, easing = LinearEasing)) }
     val dotColor = MaterialTheme.colorScheme.onSurface
     val graphColor = MaterialTheme.colorScheme.outline
-    val tapModifier =
-        if (onMidpointTap == null) {
-            Modifier
-        } else {
-            Modifier.pointerInput(grid, onMidpointTap) {
+    val headColor = MaterialTheme.colorScheme.tertiary
+    val currentOnMidpointTap by rememberUpdatedState(onMidpointTap)
+    val currentOnTrace by rememberUpdatedState(onTrace)
+    val pointerModifier =
+        Modifier.pointerInput(grid, onMidpointTap != null, onTrace != null) {
+            fun gridPosition(pixel: Offset): Offset {
+                val frame = GridFrame(grid, size.toSize())
+                return (pixel - frame.origin) / frame.unit
+            }
+            if (onMidpointTap != null) {
                 detectTapGestures { tap ->
-                    val frame = GridFrame(grid, size.toSize())
-                    val position = (tap - frame.origin) / frame.unit
-                    grid.midpointAt(position.x, position.y)?.let(onMidpointTap)
+                    val position = gridPosition(tap)
+                    grid.midpointAt(position.x, position.y)?.let { currentOnMidpointTap?.invoke(it) }
+                }
+            } else if (onTrace != null) {
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    gridPosition(down.position).let { currentOnTrace?.invoke(it.x, it.y) }
+                    drag(down.id) { change ->
+                        gridPosition(change.position).let { currentOnTrace?.invoke(it.x, it.y) }
+                        change.consume()
+                    }
                 }
             }
         }
     Spacer(
-        modifier.then(tapModifier).drawWithCache {
+        modifier.then(pointerModifier).drawWithCache {
             val frame = GridFrame(grid, size)
             val unit = frame.unit
             val corners = loops.map { loop -> loop.map(frame::toOffset) }
@@ -79,9 +99,12 @@ fun KolamCanvas(
                 }
                 curves.forEachIndexed { index, curve ->
                     measure.setPath(curve, forceClosed = false)
+                    val drawnLength = measure.length * (traceFraction ?: progress.value)
                     val drawn = Path()
-                    measure.getSegment(0f, measure.length * progress.value, drawn)
+                    measure.getSegment(0f, drawnLength, drawn)
+                    if (traceFraction != null) drawPath(curve, loopColor(index).copy(alpha = 0.25f), style = curveStroke)
                     drawPath(drawn, loopColor(index), style = curveStroke)
+                    if (traceFraction != null) drawCircle(headColor, radius = unit / 4, center = measure.getPosition(drawnLength))
                 }
                 dots.forEach { drawCircle(dotColor, radius = unit / 6, center = it) }
             }

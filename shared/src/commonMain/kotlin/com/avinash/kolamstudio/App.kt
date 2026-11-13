@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +33,7 @@ import com.avinash.kolamstudio.generator.generate
 import com.avinash.kolamstudio.generator.offeredSymmetries
 import com.avinash.kolamstudio.model.Grid
 import com.avinash.kolamstudio.model.Pattern
+import com.avinash.kolamstudio.tracer.TracePath
 import com.avinash.kolamstudio.tracer.trace
 import com.avinash.kolamstudio.ui.KolamCanvas
 import kotlin.math.roundToInt
@@ -41,6 +43,7 @@ private enum class Mode(
 ) {
     EXPLORE("Explore"),
     EDIT("Edit"),
+    TRACE("Trace"),
 }
 
 @Composable
@@ -68,19 +71,29 @@ fun App() {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                val current = pattern ?: return@Column
+                val loops = remember(current) { trace(current) }
+                val tracePath = remember(loops) { loops.singleOrNull()?.let(::TracePath) }
+                var traced by remember(current) { mutableFloatStateOf(0f) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Mode.entries.forEach {
-                        FilterChip(selected = mode == it, onClick = { mode = it }, label = { Text(it.label) })
+                        FilterChip(
+                            selected = mode == it,
+                            enabled = it != Mode.TRACE || tracePath != null,
+                            onClick = { mode = it },
+                            label = { Text(it.label) },
+                        )
                     }
-                    FilterChip(selected = showGraph, onClick = { showGraph = !showGraph }, label = { Text("Graph view") })
+                    FilterChip(selected = showGraph, onClick = { showGraph = !showGraph }, label = { Text("Graph") })
                 }
-                val current = pattern ?: return@Column
                 KolamCanvas(
                     current,
                     Modifier.weight(1f).fillMaxWidth(),
                     animate = mode == Mode.EXPLORE,
                     showGraph = showGraph,
                     onMidpointTap = if (mode == Mode.EDIT) ({ pattern = current.withNextStateAt(it) }) else null,
+                    traceFraction = if (mode == Mode.TRACE && tracePath != null) traced / tracePath.length else null,
+                    onTrace = if (mode == Mode.TRACE && tracePath != null) ({ x, y -> traced = tracePath.advance(traced, x, y) }) else null,
                 )
                 when (mode) {
                     Mode.EXPLORE -> {
@@ -103,9 +116,15 @@ fun App() {
                     }
 
                     Mode.EDIT -> {
-                        val loopCount = remember(current) { trace(current).size }
-                        Text(if (loopCount == 1) "1 loop: a valid kolam" else "$loopCount loops: a kolam needs exactly 1")
+                        Text(if (loops.size == 1) "1 loop: a valid kolam" else "${loops.size} loops: a kolam needs exactly 1")
                         Text("Tap between two dots to change how the line meets there", textAlign = TextAlign.Center)
+                    }
+
+                    Mode.TRACE -> {
+                        val percent = if (tracePath == null) 0 else (100 * traced / tracePath.length).toInt()
+                        Text(if (percent == 100) "Complete!" else "Traced $percent%")
+                        Text("Start at the marker and follow the line", textAlign = TextAlign.Center)
+                        Button(onClick = { traced = 0f }) { Text("Start again") }
                     }
                 }
             }
