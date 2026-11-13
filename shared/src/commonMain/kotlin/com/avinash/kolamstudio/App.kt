@@ -1,5 +1,6 @@
 package com.avinash.kolamstudio
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,16 +15,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -33,9 +40,21 @@ import com.avinash.kolamstudio.generator.generate
 import com.avinash.kolamstudio.generator.offeredSymmetries
 import com.avinash.kolamstudio.model.Grid
 import com.avinash.kolamstudio.model.Pattern
+import com.avinash.kolamstudio.model.patternFromCode
+import com.avinash.kolamstudio.model.toCode
+import com.avinash.kolamstudio.platform.readUrlFragment
+import com.avinash.kolamstudio.platform.savePng
+import com.avinash.kolamstudio.platform.writeUrlFragment
+import com.avinash.kolamstudio.store.CollectionStore
 import com.avinash.kolamstudio.tracer.TracePath
 import com.avinash.kolamstudio.tracer.trace
+import com.avinash.kolamstudio.ui.CollectionScreen
 import com.avinash.kolamstudio.ui.KolamCanvas
+import com.russhwolf.settings.Settings
+import io.github.vinceglb.filekit.ImageFormat
+import io.github.vinceglb.filekit.dialogs.compose.util.encodeToByteArray
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private enum class Mode(
@@ -51,27 +70,56 @@ private enum class Mode(
 fun App() {
     MaterialTheme {
         Surface(Modifier.fillMaxSize()) {
+            val store = remember { CollectionStore(Settings()) }
+            val saved by store.patterns.collectAsState()
+            val scope = rememberCoroutineScope()
+            val canvasLayer = rememberGraphicsLayer()
+            val canvasBackground = MaterialTheme.colorScheme.surface
+            var showCollection by remember { mutableStateOf(false) }
             var mode by remember { mutableStateOf(Mode.EXPLORE) }
             var showGraph by remember { mutableStateOf(false) }
-            var rows by remember { mutableIntStateOf(5) }
-            var cols by remember { mutableIntStateOf(5) }
+            var pattern by remember { mutableStateOf(readUrlFragment()?.let(::offeredPatternFromCode)) }
+            var rows by remember { mutableIntStateOf(pattern?.grid?.rows ?: 5) }
+            var cols by remember { mutableIntStateOf(pattern?.grid?.cols ?: 5) }
             var wantedSymmetry by remember { mutableStateOf(Symmetry.TWO_AXES) }
             var generation by remember { mutableIntStateOf(0) }
-            var pattern by remember { mutableStateOf<Pattern?>(null) }
+            var status by remember(pattern) { mutableStateOf("") }
 
             val grid = Grid(rows, cols)
             val symmetries = offeredSymmetries(grid)
             val symmetry = if (wantedSymmetry in symmetries) wantedSymmetry else symmetries.first()
-            LaunchedEffect(grid, symmetry, generation) {
-                generate(grid, symmetry).collect { pattern = it }
+            LaunchedEffect(generation) {
+                if (generation > 0 || pattern == null) generate(grid, symmetry).collect { pattern = it }
+            }
+            LaunchedEffect(pattern) { pattern?.let { writeUrlFragment(it.toCode()) } }
+
+            val screenModifier = Modifier.fillMaxSize().safeContentPadding().padding(16.dp)
+            val current = pattern ?: return@Surface
+            if (showCollection) {
+                CollectionScreen(
+                    saved = saved,
+                    currentCode = current.toCode(),
+                    onOpenCode = { code ->
+                        offeredPatternFromCode(code)?.let {
+                            pattern = it
+                            rows = it.grid.rows
+                            cols = it.grid.cols
+                            showCollection = false
+                        }
+                    },
+                    onRename = store::rename,
+                    onDelete = store::delete,
+                    onBack = { showCollection = false },
+                    modifier = screenModifier,
+                )
+                return@Surface
             }
 
             Column(
-                Modifier.fillMaxSize().safeContentPadding().padding(16.dp),
+                screenModifier,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                val current = pattern ?: return@Column
                 val loops = remember(current) { trace(current) }
                 val tracePath = remember(loops) { loops.singleOrNull()?.let(::TracePath) }
                 var traced by remember(current) { mutableFloatStateOf(0f) }
@@ -86,9 +134,41 @@ fun App() {
                     }
                     FilterChip(selected = showGraph, onClick = { showGraph = !showGraph }, label = { Text("Graph") })
                 }
+                Row {
+                    TextButton(
+                        onClick = {
+                            val name = "Kolam ${saved.size + 1}"
+                            store.save(name, current)
+                            status = "Saved as $name"
+                        },
+                    ) { Text("Save") }
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                status =
+                                    try {
+                                        val png = canvasLayer.toImageBitmap().encodeToByteArray(ImageFormat.PNG)
+                                        if (savePng(png, "kolam")) "Image saved" else ""
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (_: Exception) {
+                                        "Could not save the image"
+                                    }
+                            }
+                        },
+                    ) { Text("Export image") }
+                    TextButton(onClick = { showCollection = true }) { Text("Collection (${saved.size})") }
+                }
+                if (status.isNotEmpty()) Text(status)
                 KolamCanvas(
                     current,
-                    Modifier.weight(1f).fillMaxWidth(),
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .drawWithContent {
+                            canvasLayer.record { this@drawWithContent.drawContent() }
+                            drawLayer(canvasLayer)
+                        }.background(canvasBackground),
                     animate = mode == Mode.EXPLORE,
                     showGraph = showGraph,
                     onMidpointTap = if (mode == Mode.EDIT) ({ pattern = current.withNextStateAt(it) }) else null,
@@ -97,18 +177,34 @@ fun App() {
                 )
                 when (mode) {
                     Mode.EXPLORE -> {
-                        SizeSlider("Rows", rows) { rows = it }
-                        SizeSlider("Columns", cols) { cols = it }
+                        SizeSlider("Rows", rows) {
+                            if (it != rows) {
+                                rows = it
+                                generation++
+                            }
+                        }
+                        SizeSlider("Columns", cols) {
+                            if (it != cols) {
+                                cols = it
+                                generation++
+                            }
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             FilterChip(
                                 selected = symmetry == Symmetry.ONE_AXIS,
-                                onClick = { wantedSymmetry = Symmetry.ONE_AXIS },
+                                onClick = {
+                                    wantedSymmetry = Symmetry.ONE_AXIS
+                                    generation++
+                                },
                                 label = { Text("One mirror") },
                             )
                             FilterChip(
                                 selected = symmetry == Symmetry.TWO_AXES,
                                 enabled = Symmetry.TWO_AXES in symmetries,
-                                onClick = { wantedSymmetry = Symmetry.TWO_AXES },
+                                onClick = {
+                                    wantedSymmetry = Symmetry.TWO_AXES
+                                    generation++
+                                },
                                 label = { Text("Two mirrors") },
                             )
                         }
@@ -131,6 +227,9 @@ fun App() {
         }
     }
 }
+
+private fun offeredPatternFromCode(code: String): Pattern? =
+    patternFromCode(code)?.takeIf { it.grid.rows in OFFERED_SIZES && it.grid.cols in OFFERED_SIZES }
 
 @Composable
 private fun SizeSlider(
