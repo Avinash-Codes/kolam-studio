@@ -20,7 +20,9 @@ jobs:
           distribution: zulu
           java-version: 21
       - uses: gradle/actions/setup-gradle@v6
-      - run: ./gradlew build
+      # `check` runs ktlint, lint and every test. The two extra tasks build the debug APK
+      # and the development web app. The slow optimised web bundle is left for publishing.
+      - run: ./gradlew check :androidApp:assembleDebug :webApp:compileDevelopmentExecutableKotlinWasmJs
 
   ios:
     runs-on: macos-latest
@@ -31,6 +33,11 @@ jobs:
           distribution: zulu
           java-version: 21
       - uses: gradle/actions/setup-gradle@v6
+      # The Kotlin/Native compiler and its precompiled library caches live outside ~/.gradle.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
       - run: ./gradlew :shared:iosSimulatorArm64Test
       - run: >
           xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp
