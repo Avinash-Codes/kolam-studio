@@ -71,9 +71,6 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
-        jsMain.dependencies {
-            implementation(libs.wrappers.browser)
-        }
         getByName("androidDeviceTest").dependencies {
             implementation(libs.androidx.testRunner)
         }
