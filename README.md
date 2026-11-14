@@ -4,6 +4,17 @@ KolamStudio is a Kotlin Multiplatform workshop for **sikku kolam**, a South Indi
 
 ![KolamStudio showing two colored loops and the crossing that joins them](docs/workspace.png)
 
+## Try it in your browser
+
+The web build is published at **[avinash-codes.github.io/kolam-studio](https://avinash-codes.github.io/kolam-studio/)**, with no install. Each link below opens straight into a lesson or a shared pattern:
+
+- [Join two loops](https://avinash-codes.github.io/kolam-studio/#lesson/join)
+- [Split one loop](https://avinash-codes.github.io/kolam-studio/#lesson/split)
+- [Reroute a loop](https://avinash-codes.github.io/kolam-studio/#lesson/reroute)
+- [A generated 5 × 5 kolam with two mirror axes](https://avinash-codes.github.io/kolam-studio/#BQUUZAQBAABAEBkU)
+
+The demo was verified in Chrome. It needs a browser with WebAssembly garbage collection (WasmGC).
+
 ## Try it in one minute
 
 1. Open KolamStudio. **Join two loops** starts with two colored loops on a 2 × 2 dot grid.
@@ -74,6 +85,16 @@ The simulator needs no signing team. The Xcode build runs Gradle to build the sh
 `check` runs the shared tests for the available targets, ktlint, and Android Lint. Install Chrome for browser tests. Run `./gradlew :shared:iosSimulatorArm64Test` on an Apple Silicon Mac for the iOS test run. The shared tests exercise generation, loop traversal, the three lessons, tracing, pattern codes, and collection persistence. CI also builds both production browser bundles and checks the same first lesson, saved-pattern reload, and PNG download in both.
 
 The grid model, generator, graph traversal, editor, lessons, drawing and export, persistence, and Compose UI live in [`shared/src/commonMain`](shared/src/commonMain). The platform source sets provide app entry points, file dialogs, native image sharing, and web links. Pattern codes pack dimensions and midpoint states, so importing a code recreates the drawing without a server.
+
+### Shared code
+
+**89.6% of the app's source lines are shared**: 1,453 non-blank lines of Kotlin in `commonMain`, against 168 lines of platform code across all four targets (Kotlin plus the iOS app's Swift). All 291 lines of tests are shared too, in `commonTest`. To measure it yourself:
+
+```sh
+count() { find "$@" -type f \( -name '*.kt' -o -name '*.swift' \) -print0 | xargs -0 cat | grep -cv '^[[:space:]]*$'; }
+count shared/src/commonMain
+count shared/src/androidMain shared/src/iosMain shared/src/jvmMain shared/src/webMain androidApp/src desktopApp/src webApp/src iosApp
+```
 
 ## License and artwork
 
