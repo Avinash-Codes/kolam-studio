@@ -17,6 +17,7 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "Shared"
             isStatic = true
+            binaryOption("bundleId", "com.avinash.kolamstudio.shared")
         }
     }
     jvm()

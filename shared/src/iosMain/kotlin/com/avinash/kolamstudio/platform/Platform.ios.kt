@@ -7,11 +7,13 @@ import io.github.vinceglb.filekit.dialogs.shareFile
 import io.github.vinceglb.filekit.div
 import io.github.vinceglb.filekit.write
 
-actual fun readUrlFragment(): String? = null
+internal actual fun readShareLink(fragment: String): String? = null
 
-actual fun writeUrlFragment(fragment: String) = Unit
+internal actual fun readUrlFragment(): String? = null
 
-actual suspend fun savePng(
+internal actual fun writeUrlFragment(fragment: String) = Unit
+
+internal actual suspend fun savePng(
     bytes: ByteArray,
     name: String,
 ): Boolean {
@@ -20,9 +22,9 @@ actual suspend fun savePng(
     return true
 }
 
-actual val canShareImages: Boolean = true
+internal actual val canShareImages: Boolean = true
 
-actual suspend fun sharePng(
+internal actual suspend fun sharePng(
     bytes: ByteArray,
     name: String,
 ) {

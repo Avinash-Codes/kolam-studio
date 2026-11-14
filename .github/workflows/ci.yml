@@ -21,8 +21,19 @@ jobs:
           java-version: 21
       - uses: gradle/actions/setup-gradle@v6
       # `check` runs ktlint, lint and every test. The two extra tasks build the debug APK
-      # and the development web app. The slow optimised web bundle is left for publishing.
-      - run: ./gradlew check :androidApp:assembleDebug :webApp:compileDevelopmentExecutableKotlinWasmJs
+      # and both browser variants used by the runtime smoke check.
+      - run: ./gradlew check :androidApp:assembleDebug :webApp:wasmJsBrowserDistribution :webApp:jsBrowserDistribution
+      - name: Smoke-test browser builds
+        run: |
+          smoke_dir=$(mktemp -d)
+          npm install --prefix "$smoke_dir" --no-audit --no-fund playwright@1.65.1
+          cp scripts/browser-smoke.mjs "$smoke_dir/"
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory webApp/build/dist &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          curl --silent --fail --retry 5 --retry-connrefused http://127.0.0.1:8765/ >/dev/null
+          KOLAM_CHROME_PATH=$(command -v google-chrome) node "$smoke_dir/browser-smoke.mjs" \
+            http://127.0.0.1:8765/wasmJs/productionExecutable/ http://127.0.0.1:8765/js/productionExecutable/
 
   ios:
     runs-on: macos-latest

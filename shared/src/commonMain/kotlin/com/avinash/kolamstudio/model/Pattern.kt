@@ -14,10 +14,10 @@ data class Pattern(
     fun stateAt(
         x: Int,
         y: Int,
-    ): MidpointState = states[grid.midpointIndex(x, y)]
+    ): MidpointState = states[grid.midpointIndex(x = x, y = y)]
 
     fun withNextStateAt(midpoint: Point): Pattern {
-        val index = grid.midpointIndex(midpoint.x, midpoint.y)
+        val index = grid.midpointIndex(x = midpoint.x, y = midpoint.y)
         val next = MidpointState.entries[(states[index].ordinal + 1) % MidpointState.entries.size]
         return copy(states = states.toMutableList().also { it[index] = next })
     }

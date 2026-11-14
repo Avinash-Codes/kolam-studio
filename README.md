@@ -1,46 +1,80 @@
-This is a Kotlin Multiplatform project targeting Android, iOS, Web, Desktop (JVM).
+# KolamStudio
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+KolamStudio is a Kotlin Multiplatform workshop for **sikku kolam**, a South Indian drawing tradition in which lines wind around a grid of dots. Change how two strands meet at a crossing and watch the path split, join, or reroute. Then try drawing the resulting loop in one stroke.
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+![KolamStudio showing two colored loops and the crossing that joins them](docs/workspace.png)
 
-### Running the apps
+## Try it in one minute
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+1. Open KolamStudio. **Join two loops** starts with two colored loops on a 2 × 2 dot grid.
+2. Tap the outlined crossing above the center, or press **Change crossing**. The horizontal mirror joins the two loops into one. **Undo** restores the crossing. **Graph** toggles the underlying paths and mirrors.
+3. Press **Trace this loop**. Start at the marker and drag along the line until you return to the start. **Start again** resets the trace.
+4. Use **Save** and open **Collection** to reopen or rename the pattern. **Export PNG** downloads or saves a clean image. On Android and iOS, open **Export** for **Save PNG** and **Share PNG**.
 
-- Android app: `./gradlew :androidApp:assembleDebug`
-- Desktop app:
-  - Hot reload: `./gradlew :desktopApp:hotRun --auto`
-  - Standard run: `./gradlew :desktopApp:run`
-- Web app:
-  - Wasm target (faster, modern browsers): `./gradlew :webApp:wasmJsBrowserDevelopmentRun`
-  - JS target (slower, supports older browsers): `./gradlew :webApp:jsBrowserDevelopmentRun`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+**Lessons** also has examples for splitting a loop and rerouting it. **Explore** generates new single-loop patterns, with grid dimensions and symmetry under **Grid settings**. To transfer an editable pattern between devices, copy **Current pattern code** from Collection, paste it into Collection on the other device, and press **Import**. On the web, the address bar also carries the current lesson or exact pattern. The collection is saved locally on each device or browser.
 
-### Running tests
+## Run from source
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+Install a [Zulu JDK 21](https://www.azul.com/downloads/?version=java-21-lts&package=jdk), and make `java -version` available in your terminal. The Gradle wrapper pins Gradle 9.6 and a Zulu 21 daemon. Allow internet access for the first dependency download. The commands below assume a shell in the repository root. On Windows, run Gradle commands with `gradlew.bat` in Command Prompt.
 
-- Android tests: `./gradlew :shared:testAndroidHostTest`
-- Desktop tests: `./gradlew :shared:jvmTest`
-- Web tests:
-  - Wasm target: `./gradlew :shared:wasmJsTest`
-  - JS target: `./gradlew :shared:jsTest`
-- iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
+```sh
+git clone https://github.com/Avinash-Codes/kolam-studio.git
+cd kolam-studio
+```
 
----
+### Web (Wasm or JS)
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html),
-[Compose Multiplatform](https://kotlinlang.org/compose-multiplatform/),
-[Kotlin/Wasm](https://kotl.in/wasm/)…
+```sh
+./gradlew :webApp:wasmJsBrowserDevelopmentRun
+```
 
-We would appreciate your feedback on Compose/Web and Kotlin/Wasm in the public Slack channel [#compose-web](https://slack-chats.kotlinlang.org/c/compose-web).
-If you face any issues, please report them on [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP).
+Open [the local Join lesson](http://localhost:8080/#lesson/join). To run the JS build, stop the Wasm server with `Ctrl+C` and run `./gradlew :webApp:jsBrowserDevelopmentRun`, then open the same URL. Both use WebGL and the Skiko rendering engine. The Kotlin/Wasm build also needs WasmGC. Both were verified in Chrome 157. Gradle downloads Node and Yarn for the build.
+
+### Desktop (JVM)
+
+```sh
+./gradlew :desktopApp:run
+```
+
+Run from a graphical session. Verified on macOS arm64. `./gradlew :desktopApp:hotRun --auto` is an optional development command that provisions JetBrains Runtime.
+
+### Android
+
+Install [Android Studio](https://developer.android.com/studio). In SDK Manager, install **Android SDK Platform 37** and **Android SDK Platform-Tools**. Create and start a virtual device in Device Manager, or connect a device with USB debugging enabled. The app targets API 37 and requires API 24 or later.
+
+Set `ANDROID_HOME` to the SDK location shown by SDK Manager. For example, on macOS:
+
+```sh
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$ANDROID_HOME/platform-tools:$PATH"
+adb devices
+./gradlew :androidApp:installDebug
+adb shell am start -n com.avinash.kolamstudio/.MainActivity
+```
+
+Use one emulator or device for these commands. With multiple devices, target an emulator by setting `ANDROID_SERIAL` to the serial from `adb devices`. Alternatively, `./gradlew :androidApp:assembleDebug` writes `androidApp/build/outputs/apk/debug/androidApp-debug.apk`.
+
+### iOS
+
+On an Apple Silicon Mac, install Xcode and an iOS Simulator runtime **18.5 or later**. Open Xcode once to install its components. Open the project, select the **iosApp** scheme and an iPhone simulator, then press **Run**.
+
+```sh
+open iosApp/iosApp.xcodeproj
+```
+
+The simulator needs no signing team. The Xcode build runs Gradle to build the shared framework. Verified with Xcode 27.2 on an iOS 27.2 arm64 simulator.
+
+## Tests and implementation
+
+```sh
+./gradlew check
+./gradlew ktlintCheck
+```
+
+`check` runs the shared tests for the available targets, ktlint, and Android Lint. Install Chrome for browser tests. Run `./gradlew :shared:iosSimulatorArm64Test` on an Apple Silicon Mac for the iOS test run. The shared tests exercise generation, loop traversal, the three lessons, tracing, pattern codes, and collection persistence. CI also builds both production browser bundles and checks the same first lesson, saved-pattern reload, and PNG download in both.
+
+The grid model, generator, graph traversal, editor, lessons, drawing and export, persistence, and Compose UI live in [`shared/src/commonMain`](shared/src/commonMain). The platform source sets provide app entry points, file dialogs, native image sharing, and web links. Pattern codes pack dimensions and midpoint states, so importing a code recreates the drawing without a server.
+
+## License and artwork
+
+[Apache License 2.0](LICENSE). The launcher icons, favicon, and lesson patterns are project-created artwork based on the same dot-and-loop geometry used by the app. The screenshot shows the running app. The UI uses system fonts. For background on the art form and its topology, see [A Topological Approach to Creating any Pulli Kolam](https://arxiv.org/abs/1503.02130).

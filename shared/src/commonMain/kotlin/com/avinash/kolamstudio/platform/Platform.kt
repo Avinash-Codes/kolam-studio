@@ -1,17 +1,19 @@
 package com.avinash.kolamstudio.platform
 
-expect fun readUrlFragment(): String?
+internal expect fun readShareLink(fragment: String): String?
 
-expect fun writeUrlFragment(fragment: String)
+internal expect fun readUrlFragment(): String?
 
-expect suspend fun savePng(
+internal expect fun writeUrlFragment(fragment: String)
+
+internal expect suspend fun savePng(
     bytes: ByteArray,
     name: String,
 ): Boolean
 
-expect val canShareImages: Boolean
+internal expect val canShareImages: Boolean
 
-expect suspend fun sharePng(
+internal expect suspend fun sharePng(
     bytes: ByteArray,
     name: String,
 )

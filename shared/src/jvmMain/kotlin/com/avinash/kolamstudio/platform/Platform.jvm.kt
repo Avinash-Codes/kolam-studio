@@ -4,11 +4,13 @@ import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.dialogs.openFileSaver
 import io.github.vinceglb.filekit.write
 
-actual fun readUrlFragment(): String? = null
+internal actual fun readShareLink(fragment: String): String? = null
 
-actual fun writeUrlFragment(fragment: String) = Unit
+internal actual fun readUrlFragment(): String? = null
 
-actual suspend fun savePng(
+internal actual fun writeUrlFragment(fragment: String) = Unit
+
+internal actual suspend fun savePng(
     bytes: ByteArray,
     name: String,
 ): Boolean {
@@ -17,9 +19,9 @@ actual suspend fun savePng(
     return true
 }
 
-actual val canShareImages: Boolean = false
+internal actual val canShareImages: Boolean = false
 
-actual suspend fun sharePng(
+internal actual suspend fun sharePng(
     bytes: ByteArray,
     name: String,
 ) = Unit

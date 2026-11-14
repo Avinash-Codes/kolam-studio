@@ -7,11 +7,13 @@ import io.github.vinceglb.filekit.download
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.js
 
-actual fun readUrlFragment(): String? = locationHash().removePrefix("#").ifEmpty { null }
+internal actual fun readShareLink(fragment: String): String? = locationWithoutHash() + "#" + fragment
 
-actual fun writeUrlFragment(fragment: String) = replaceLocationHash(fragment)
+internal actual fun readUrlFragment(): String? = locationHash().removePrefix("#").ifEmpty { null }
 
-actual suspend fun savePng(
+internal actual fun writeUrlFragment(fragment: String) = replaceLocationHash(fragment)
+
+internal actual suspend fun savePng(
     bytes: ByteArray,
     name: String,
 ): Boolean {
@@ -19,12 +21,14 @@ actual suspend fun savePng(
     return true
 }
 
-actual val canShareImages: Boolean = false
+internal actual val canShareImages: Boolean = false
 
-actual suspend fun sharePng(
+internal actual suspend fun sharePng(
     bytes: ByteArray,
     name: String,
 ) = Unit
+
+private fun locationWithoutHash(): String = js("window.location.href.split('#')[0]")
 
 private fun locationHash(): String = js("window.location.hash")
 

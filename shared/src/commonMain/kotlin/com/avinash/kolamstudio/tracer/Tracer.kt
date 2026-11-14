@@ -33,7 +33,7 @@ fun trace(pattern: Pattern): List<List<Point>> {
             for (startDx in DIRECTIONS) {
                 for (startDy in DIRECTIONS) {
                     val leavesBox = startX + startDx !in 0..grid.width || startY + startDy !in 0..grid.height
-                    if (leavesBox || visited[strand(startX, startY, startDx, startDy)]) continue
+                    if (leavesBox || visited[strand(x = startX, y = startY, dx = startDx, dy = startDy)]) continue
 
                     val loop = mutableListOf<Point>()
                     var x = startX
@@ -42,11 +42,11 @@ fun trace(pattern: Pattern): List<List<Point>> {
                     var dy = startDy
                     do {
                         loop += Point(x, y)
-                        visited[strand(x, y, dx, dy)] = true
+                        visited[strand(x = x, y = y, dx = dx, dy = dy)] = true
                         x += dx
                         y += dy
                         // Also mark the same step walked backwards, so the loop is not traced again in reverse.
-                        visited[strand(x, y, -dx, -dy)] = true
+                        visited[strand(x = x, y = y, dx = -dx, dy = -dy)] = true
                         when {
                             x == 0 || x == grid.width -> {
                                 dx = -dx
@@ -57,7 +57,7 @@ fun trace(pattern: Pattern): List<List<Point>> {
                             }
 
                             else -> {
-                                when (pattern.stateAt(x, y)) {
+                                when (pattern.stateAt(x = x, y = y)) {
                                     MidpointState.CROSS -> Unit
                                     MidpointState.MIRROR_H -> dy = -dy
                                     MidpointState.MIRROR_V -> dx = -dx
