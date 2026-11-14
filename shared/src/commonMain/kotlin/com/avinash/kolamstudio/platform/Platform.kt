@@ -8,3 +8,10 @@ expect suspend fun savePng(
     bytes: ByteArray,
     name: String,
 ): Boolean
+
+expect val canShareImages: Boolean
+
+expect suspend fun sharePng(
+    bytes: ByteArray,
+    name: String,
+)

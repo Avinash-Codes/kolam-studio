@@ -19,6 +19,13 @@ actual suspend fun savePng(
     return true
 }
 
+actual val canShareImages: Boolean = false
+
+actual suspend fun sharePng(
+    bytes: ByteArray,
+    name: String,
+) = Unit
+
 private fun locationHash(): String = js("window.location.hash")
 
 private fun replaceLocationHash(fragment: String): Unit = js("window.history.replaceState(null, '', '#' + fragment)")

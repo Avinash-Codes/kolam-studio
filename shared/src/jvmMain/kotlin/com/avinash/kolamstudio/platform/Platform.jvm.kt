@@ -16,3 +16,10 @@ actual suspend fun savePng(
     file.write(bytes)
     return true
 }
+
+actual val canShareImages: Boolean = false
+
+actual suspend fun sharePng(
+    bytes: ByteArray,
+    name: String,
+) = Unit

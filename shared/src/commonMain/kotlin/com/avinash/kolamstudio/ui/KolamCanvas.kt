@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.toSize
 import com.avinash.kolamstudio.model.Grid
@@ -38,6 +39,8 @@ private const val DRAW_MILLIS = 2500
 private const val FIRST_LOOP_HUE = 260f
 private const val GOLDEN_ANGLE = 137.5f
 private const val WALL_HALF_LENGTH = 0.35f
+private const val LOOP_BRIGHTNESS_ON_LIGHT = 0.65f
+private const val LOOP_BRIGHTNESS_ON_DARK = 0.9f
 
 @Composable
 fun KolamCanvas(
@@ -56,6 +59,8 @@ fun KolamCanvas(
     val dotColor = MaterialTheme.colorScheme.onSurface
     val graphColor = MaterialTheme.colorScheme.outline
     val headColor = MaterialTheme.colorScheme.tertiary
+    val onDarkSurface = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val loopBrightness = if (onDarkSurface) LOOP_BRIGHTNESS_ON_DARK else LOOP_BRIGHTNESS_ON_LIGHT
     val currentOnMidpointTap by rememberUpdatedState(onMidpointTap)
     val currentOnTrace by rememberUpdatedState(onTrace)
     val pointerModifier =
@@ -102,8 +107,8 @@ fun KolamCanvas(
                     val drawnLength = measure.length * (traceFraction ?: progress.value)
                     val drawn = Path()
                     measure.getSegment(0f, drawnLength, drawn)
-                    if (traceFraction != null) drawPath(curve, loopColor(index).copy(alpha = 0.25f), style = curveStroke)
-                    drawPath(drawn, loopColor(index), style = curveStroke)
+                    if (traceFraction != null) drawPath(curve, loopColor(index, loopBrightness).copy(alpha = 0.25f), style = curveStroke)
+                    drawPath(drawn, loopColor(index, loopBrightness), style = curveStroke)
                     if (traceFraction != null) drawCircle(headColor, radius = unit / 4, center = measure.getPosition(drawnLength))
                 }
                 dots.forEach { drawCircle(dotColor, radius = unit / 6, center = it) }
@@ -122,7 +127,10 @@ private class GridFrame(
     fun toOffset(point: Point) = origin + Offset(point.x * unit, point.y * unit)
 }
 
-private fun loopColor(index: Int) = Color.hsv((FIRST_LOOP_HUE + index * GOLDEN_ANGLE) % 360f, 0.55f, 0.65f)
+private fun loopColor(
+    index: Int,
+    brightness: Float,
+) = Color.hsv((FIRST_LOOP_HUE + index * GOLDEN_ANGLE) % 360f, 0.55f, brightness)
 
 private fun DrawScope.drawMidpoint(
     state: MidpointState,
