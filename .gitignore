@@ -1,20 +1,28 @@
-*.iml
+# Gradle and Kotlin build output
 .kotlin
 .gradle
 **/build/
-xcuserdata
 !src/**/build/
+
+# Local settings and IDE files
 local.properties
 .idea
+*.iml
 .DS_Store
+
+# Android tooling
 captures
 .externalNativeBuild
 .cxx
+
+# Xcode user files and shared project metadata
+xcuserdata
 *.xcodeproj/*
 !*.xcodeproj/project.pbxproj
 !*.xcodeproj/xcshareddata/
 !*.xcodeproj/project.xcworkspace/
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
+
+# Web dependencies
 node_modules/
-CONTEST_WIKI.md
